@@ -81,7 +81,7 @@ else:
                 filtered_df = df[df["Category"] == tab_name]
             
             # Create a flexible layout grid (Responsive columns)
-            cols = st.columns(2 if st.sidebar.to_dict() else 3)
+            cols = st.columns(3)
             
             for idx, (_, row) in enumerate(filtered_df.iterrows()):
                 col_idx = idx % len(cols)
@@ -110,4 +110,15 @@ else:
                         st.markdown("---")
                         
                         # Dynamic Quick Launch Integration Links
-                        if pd.notna(row
+                        if pd.notna(row['GitHub URL']) and str(row['GitHub URL']).startswith("http"):
+                            st.link_button("🐙 GitHub Repository", str(row['GitHub URL']), use_container_width=True)
+                            
+                        if pd.notna(row['Hosting URL']) and str(row['Hosting URL']).startswith("http"):
+                            st.link_button("🌐 Open Live App", str(row['Hosting URL']), use_container_width=True)
+                            
+                        if pd.notna(row['Workspace URL']) and str(row['Workspace URL']).startswith("http"):
+                            st.link_button("🛠️ Dev Workspace", str(row['Workspace URL']), use_container_width=True)
+
+# 4. Sheet Data Inspector (Collapsible layout check)
+with st.expander("📊 View Raw Spreadsheet Logs"):
+    st.dataframe(df, use_container_width=True)
