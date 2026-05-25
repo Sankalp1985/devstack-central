@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 # Custom Glassmorphism UI styling cards
-st.markdown("""
+st.markdown('<p style="color: #888888; font-size: 1.2rem; margin-top: -15px;">Ecosystem Registry & Live Project Control Tower</p>', unsafe_url_allowed=True)
 <style>
     [data-testid="stMetricValue"] {
         font-size: 2.2rem !important;
