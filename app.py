@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 # Custom Glassmorphism UI styling cards
-st.markdown('<p style="color: #888888; font-size: 1.2rem; margin-top: -15px;">Ecosystem Registry & Live Project Control Tower</p>', unsafe_url_allowed=True)
+st.markdown("""
 <style>
     [data-testid="stMetricValue"] {
         font-size: 2.2rem !important;
@@ -35,11 +35,11 @@ st.markdown('<p style="color: #888888; font-size: 1.2rem; margin-top: -15px;">Ec
         background-color: rgba(30, 136, 229, 0.02) !important;
     }
 </style>
-""", unsafe_url_allowed=True)
+""", unsafe_allow_html=True)
 
 # App branding headers
 st.markdown('# ⚡ DevStack Central')
-st.markdown('<p style="color: #888888; font-size: 1.2rem; margin-top: -15px;">Ecosystem Registry & Live Project Control Tower</p>', unsafe_url_allowed=True)
+st.markdown('<p style="color: #888888; font-size: 1.2rem; margin-top: -15px;">Ecosystem Registry & Live Project Control Tower</p>', unsafe_allow_html=True)
 st.markdown("---")
 
 # 2. High-Speed Cache Engine (Zero-Lag Loads)
@@ -205,7 +205,7 @@ else:
                             chips = [c.strip() for c in str(row['Stack']).split(",")]
                             st.markdown(" ".join([f"`{chip}`" for chip in chips]))
                         
-                        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_url_allowed=True)
+                        st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
                         st.markdown("**Project Action Links**")
                         
                         # Core standard quick action primary triggers
@@ -231,6 +231,6 @@ else:
                                         st.link_button(f"🔗 {d_link['label']}", d_link['url'], use_container_width=True)
 
 # 5. DATASTREAM AUDIT PANEL
-st.markdown("<br><br>", unsafe_url_allowed=True)
+st.markdown("<br><br>", unsafe_allow_html=True)
 with st.expander("📊 Google Sheets Raw Sync Audit Ledger"):
     st.dataframe(df, use_container_width=True)
