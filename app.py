@@ -1,6 +1,7 @@
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
+import requests
 
 # Set page configurations
 st.set_page_config(page_title="DevStack Central", page_icon="💻", layout="wide")
@@ -9,20 +10,20 @@ st.title("💻 DevStack Central")
 st.subheader("Your Unified Project Control Tower")
 st.markdown("---")
 
-# 1. Establish Google Sheets Connection
+# 1. Read Data via Public Link (100% Stable & Free)
 try:
     conn = st.connection("gsheets", type=GSheetsConnection)
-    # Read existing project data from the connected spreadsheet
-    df = conn.read(ttl="1m")  # Caches data for 1 minute to stay fresh
+    df = conn.read(ttl="0m")
 except Exception as e:
     st.error(f"Failed to connect to Google Sheets: {e}")
-    st.info("Please verify your Advanced Settings Secrets on Streamlit Cloud.")
     st.stop()
 
-# Clean up empty rows if any exist in the spreadsheet
-df = df.dropna(how="all")
+if df is not None:
+    df = df.dropna(how="all")
+else:
+    df = pd.DataFrame(columns=["Project Name", "Status", "Category", "Stack", "GitHub URL", "Hosting URL", "Workspace URL", "Description"])
 
-# 2. Sidebar / Top Control Panel - Add New Project
+# 2. Sidebar Setup - Submitting via Webhook
 with st.sidebar:
     st.header("⚙️ Project Management")
     st.metric(label="Total Tracked Projects", value=len(df))
@@ -33,12 +34,12 @@ with st.sidebar:
         new_name = st.text_input("Project Name*")
         new_status = st.selectbox("Status", ["Active", "In Progress", "Deployed", "Paused", "In Development"])
         new_category = st.selectbox("Category", ["Web App", "Mobile App", "AI/LLM Workspace", "Backend API", "Utility Script"])
-        new_stack = st.text_input("Tech Stack (comma-separated)", placeholder="e.g. Streamlit, GitHub, Hostinger")
+        new_stack = st.text_input("Tech Stack", placeholder="e.g. Java, React, PHP, Hostinger")
         
         new_github = st.text_input("GitHub URL")
-        new_hosting = st.text_input("Hosting/Live URL")
-        new_workspace = st.text_input("Workspace Link (Claude/Lovable/Replit)")
-        new_desc = st.text_area("Project Description")
+        new_hosting = st.text_input("Hosting URL")
+        new_workspace = st.text_input("Workspace URL")
+        new_desc = st.text_area("Description")
         
         submit_button = st.form_submit_button(label="Save to Google Sheets")
         
@@ -46,51 +47,48 @@ with st.sidebar:
             if not new_name:
                 st.error("Project Name is required.")
             else:
-                # Structure the new entry data
-                new_row = pd.DataFrame([{
-                    "Project Name": new_name,
-                    "Status": new_status,
-                    "Category": new_category,
-                    "Stack": new_stack,
-                    "GitHub URL": new_github,
-                    "Hosting URL": new_hosting,
-                    "Workspace URL": new_workspace,
-                    "Description": new_desc
-                }])
+                # Prepare payload for Google Apps Script
+                payload = {
+                    "projectName": new_name,
+                    "status": new_status,
+                    "category": new_category,
+                    "stack": new_stack,
+                    "githubUrl": new_github,
+                    "hostingUrl": new_hosting,
+                    "workspaceUrl": new_workspace,
+                    "description": new_desc
+                }
                 
-                # Merge new data with existing data frame and push back to Google Sheets
-                updated_df = pd.concat([df, new_row], ignore_index=True)
-                conn.update(data=updated_df)
-                st.success(f"🎉 '{new_name}' successfully added!")
-                st.rerun()
+                try:
+                    webhook_url = st.secrets["webhook"]["url"]
+                    response = requests.post(webhook_url, json=payload)
+                    if response.status_code == 200 and "success" in response.text:
+                        st.success(f"🎉 '{new_name}' successfully saved!")
+                        st.rerun()
+                    else:
+                        st.error("Failed to append row. Check your Apps Script deployment.")
+                except Exception as e:
+                    st.error(f"Webhook communication error: {e}")
 
-# 3. Main Dashboard Display
+# 3. Main Dashboard Rendering Layout
 if df.empty:
-    st.info("Your database is empty. Use the input panel to add your first project entry!")
+    st.info("Your database is empty. Use the sidebar input block to add your first project entry!")
 else:
-    # Filter Tabs based on categories present in your sheet
+    # Use clean columns matching your sheet headers exactly
     categories = ["All"] + sorted(list(df["Category"].dropna().unique()))
     selected_tabs = st.tabs(categories)
     
     for index, tab_name in enumerate(categories):
         with selected_tabs[index]:
-            # Filter rows for the active tab view
-            if tab_name == "All":
-                filtered_df = df
-            else:
-                filtered_df = df[df["Category"] == tab_name]
+            filtered_df = df if tab_name == "All" else df[df["Category"] == tab_name]
             
-            # Create a flexible layout grid (Responsive columns)
             cols = st.columns(3)
-            
             for idx, (_, row) in enumerate(filtered_df.iterrows()):
-                col_idx = idx % len(cols)
+                col_idx = idx % 3
                 with cols[col_idx]:
-                    # Render project item card block
                     with st.container(border=True):
                         st.markdown(f"### {row['Project Name']}")
                         
-                        # Status badge styling flags
                         status = row['Status']
                         if status in ["Active", "Deployed"]:
                             st.success(f"🟢 {status}")
@@ -100,25 +98,22 @@ else:
                             st.warning(f"🟡 {status}")
                             
                         st.caption(f"**Category:** {row['Category']}")
-                        st.write(row['Description'] if pd.notna(row['Description']) else "*No description added.*")
+                        st.write(row['Description'] if pd.notna(row['Description']) else "")
                         
-                        # Render technical tags markup 
                         if pd.notna(row['Stack']) and str(row['Stack']).strip() != "":
                             tags = [t.strip() for t in str(row['Stack']).split(",")]
                             st.markdown(" ".join([f"`{tag}`" for tag in tags]))
                         
                         st.markdown("---")
                         
-                        # Dynamic Quick Launch Integration Links
                         if pd.notna(row['GitHub URL']) and str(row['GitHub URL']).startswith("http"):
-                            st.link_button("🐙 GitHub Repository", str(row['GitHub URL']), use_container_width=True)
+                            st.link_button("🐙 GitHub", str(row['GitHub URL']), use_container_width=True)
                             
                         if pd.notna(row['Hosting URL']) and str(row['Hosting URL']).startswith("http"):
-                            st.link_button("🌐 Open Live App", str(row['Hosting URL']), use_container_width=True)
+                            st.link_button("🌐 Live App", str(row['Hosting URL']), use_container_width=True)
                             
                         if pd.notna(row['Workspace URL']) and str(row['Workspace URL']).startswith("http"):
-                            st.link_button("🛠️ Dev Workspace", str(row['Workspace URL']), use_container_width=True)
+                            st.link_button("🛠️ Workspace", str(row['Workspace URL']), use_container_width=True)
 
-# 4. Sheet Data Inspector (Collapsible layout check)
 with st.expander("📊 View Raw Spreadsheet Logs"):
     st.dataframe(df, use_container_width=True)
